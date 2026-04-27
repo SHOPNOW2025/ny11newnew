@@ -88,3 +88,17 @@ export interface ChatRoom {
   type: "EXPERT" | "AI";
   expertId?: string;
 }
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  discountType: "PERCENTAGE" | "FIXED";
+  discountValue: number;
+  maxDiscount?: number;
+  minOrderValue?: number;
+  expiryDate: number;
+  usageLimit?: number;
+  usageCount: number;
+  isActive: boolean;
+  createdAt: number;
+}

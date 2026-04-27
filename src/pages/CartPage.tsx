@@ -6,12 +6,17 @@ import { ArrowRight, X, Trash2, ShoppingBag, Plus, Minus, CreditCard, ChevronLef
 import { useCart } from "../context/CartContext";
 import { formatPrice } from "../lib/currency";
 import { db } from "../lib/firebase";
-import { collection, addDoc, doc, updateDoc, increment } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, increment, query, where, getDocs } from "firebase/firestore";
+import { PromoCode } from "../types";
+import { Tag } from "lucide-react";
 
 export default function CartPage({ user, lang }: { user: UserProfile | null, lang: "ar" | "en" }) {
     const navigate = useNavigate();
     const { items, total, removeFromCart, updateQuantity, clearCart } = useCart();
     const [loading, setLoading] = useState(false);
+    const [promoInput, setPromoInput] = useState("");
+    const [promoData, setPromoData] = useState<PromoCode | null>(null);
+    const [promoError, setPromoError] = useState("");
 
   const t = {
     walletError: lang === "ar" ? "رصيد المحفظة غير كافٍ!" : "Insufficient wallet balance!",
@@ -25,8 +30,59 @@ export default function CartPage({ user, lang }: { user: UserProfile | null, lan
     subtotal: lang === "ar" ? "المجموع الفرعي" : "Subtotal",
     paying: lang === "ar" ? "جاري الدفع..." : "Paying...",
     checkout: lang === "ar" ? "إتمام الشراء" : "Complete Purchase",
-    purchaseDesc: lang === "ar" ? (n: number) => `شراء ${n} منتجات` : (n: number) => `Purchase ${n} items`
+    purchaseDesc: lang === "ar" ? (n: number) => `شراء ${n} منتجات` : (n: number) => `Purchase ${n} items`,
+    promoLabel: lang === "ar" ? "كود الخصم" : "Promo Code",
+    apply: lang === "ar" ? "تطبيق" : "Apply",
+    promoInvalid: lang === "ar" ? "كود غير صالح أو منتهي" : "Invalid or expired code",
+    promoMinOrder: lang === "ar" ? (val: string) => `أقل قيمة للطلب ${val}` : (val: string) => `Min order value ${val}`,
+    discountTitle: lang === "ar" ? "الخصم" : "Discount",
+    promoSuccess: lang === "ar" ? "تم تطبيق الخصم!" : "Discount applied!",
+    finalTotal: lang === "ar" ? "الإجمالي النهائي" : "Total"
   };
+
+  const handleApplyPromo = async () => {
+    if (!promoInput) return;
+    setLoading(true);
+    setPromoError("");
+    try {
+        const q = query(collection(db, "promo_codes"), where("code", "==", promoInput.toUpperCase()), where("isActive", "==", true));
+        const snap = await getDocs(q);
+        
+        if (snap.empty) {
+            setPromoError(t.promoInvalid);
+            setPromoData(null);
+        } else {
+            const data = { id: snap.docs[0].id, ...snap.docs[0].data() } as PromoCode;
+            const now = Date.now();
+            
+            if (data.expiryDate && data.expiryDate < now) {
+                setPromoError(t.promoInvalid);
+                setPromoData(null);
+            } else if (data.minOrderValue && total < data.minOrderValue) {
+                setPromoError(t.promoMinOrder(formatPrice(data.minOrderValue, user)));
+                setPromoData(null);
+            } else if (data.usageLimit && data.usageCount >= data.usageLimit) {
+                setPromoError(t.promoInvalid);
+                setPromoData(null);
+            } else {
+                setPromoData(data);
+                setPromoError("");
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        setPromoError(t.promoInvalid);
+    }
+    setLoading(false);
+  };
+
+  const discountAmount = promoData ? (
+    promoData.discountType === "PERCENTAGE" 
+        ? Math.min(total * (promoData.discountValue / 100), promoData.maxDiscount || Infinity)
+        : promoData.discountValue
+  ) : 0;
+
+  const finalTotalValue = Math.max(0, total - discountAmount);
 
   const handleCheckout = async () => {
     if (!user) {
@@ -45,17 +101,26 @@ export default function CartPage({ user, lang }: { user: UserProfile | null, lan
         type: item.type,
         quantity: item.quantity
       })),
-      total: total
+      total: finalTotalValue,
+      originalTotal: total,
+      discount: discountAmount,
+      promoCode: promoData?.code || null
     };
 
     navigate("/payment", {
       state: {
-        amount: total,
+        amount: finalTotalValue,
         currency: items[0]?.currency || "JOD",
         type: "ORDER",
         orderData
       }
     });
+
+    if (promoData) {
+        await updateDoc(doc(db, "promo_codes", promoData.id), {
+            usageCount: (promoData.usageCount || 0) + 1
+        });
+    }
   };
 
   if (items.length === 0) {
@@ -135,10 +200,45 @@ export default function CartPage({ user, lang }: { user: UserProfile | null, lan
       </div>
 
       <div className="px-6 pb-6 pt-4 space-y-4 bg-[var(--bg-main)]/80 backdrop-blur-xl border-t border-[var(--border-muted)]">
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs text-[var(--text-muted)] px-2 uppercase font-bold tracking-widest">
-            <span>{t.subtotal}</span>
-            <span>{formatPrice(total, user)}</span>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <div className="flex-1 glass rounded-2xl px-4 py-3 border-[var(--border-muted)] flex items-center gap-3">
+              <Tag size={16} className="text-primary" />
+              <input 
+                type="text" 
+                placeholder={t.promoLabel}
+                className="bg-transparent border-none focus:ring-0 text-sm w-full font-bold uppercase placeholder:text-[var(--text-muted)]"
+                value={promoInput}
+                onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+              />
+            </div>
+            <button 
+                onClick={handleApplyPromo}
+                disabled={!promoInput || loading}
+                className="glass border-[var(--border-muted)] px-6 rounded-2xl text-[10px] font-black uppercase text-primary active:scale-95 transition-all disabled:opacity-30"
+            >
+                {t.apply}
+            </button>
+          </div>
+          
+          {promoError && <p className="text-[10px] font-bold text-red-500 px-2">{promoError}</p>}
+          {promoData && <p className="text-[10px] font-bold text-primary px-2">{t.promoSuccess}</p>}
+
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px] text-[var(--text-muted)] px-2 uppercase font-black tracking-widest">
+              <span>{t.subtotal}</span>
+              <span>{formatPrice(total, user)}</span>
+            </div>
+            {discountAmount > 0 && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="flex justify-between text-[10px] text-primary px-2 uppercase font-black tracking-widest">
+                    <span>{t.discountTitle} ({promoData?.code})</span>
+                    <span>-{formatPrice(discountAmount, user)}</span>
+                </motion.div>
+            )}
+            <div className="flex justify-between text-sm text-[var(--text-main)] px-2 uppercase font-black tracking-widest pt-2 border-t border-white/5">
+              <span>{t.finalTotal}</span>
+              <span>{formatPrice(finalTotalValue, user)}</span>
+            </div>
           </div>
         </div>
 
@@ -152,7 +252,7 @@ export default function CartPage({ user, lang }: { user: UserProfile | null, lan
           ) : (
             <>
               <CreditCard size={20} />
-              {t.checkout} • {formatPrice(total, user)}
+              {t.checkout} • {formatPrice(finalTotalValue, user)}
             </>
           )}
         </button>

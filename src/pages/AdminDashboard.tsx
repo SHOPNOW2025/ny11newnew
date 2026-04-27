@@ -3,13 +3,13 @@ import { UserProfile, MenuItem, LabTest } from "../types";
 import { db } from "../lib/firebase";
 import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, getDoc, setDoc, query, where } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Edit2, Trash2, Wallet, Users, Utensils, FlaskConical, DollarSign, ArrowLeftRight, LayoutDashboard, FileText, ChevronRight, X, Save, Brain, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Wallet, Users, Utensils, FlaskConical, DollarSign, ArrowLeftRight, LayoutDashboard, FileText, ChevronRight, X, Save, Brain, Image as ImageIcon, Loader2, Tag } from "lucide-react";
 import { UserRole } from "../types";
 import { uploadImage } from "../services/imageService";
 import { formatPrice } from "../lib/currency";
 import { getLocalizedString } from "../lib/utils";
 
-type AdminTab = "DASHBOARD" | "MENU" | "LABS" | "USERS" | "FINANCE" | "CONTENT" | "KNOWLEDGE";
+type AdminTab = "DASHBOARD" | "MENU" | "LABS" | "USERS" | "FINANCE" | "CONTENT" | "KNOWLEDGE" | "PROMO";
 
 export default function AdminDashboard({ user, lang }: { user: UserProfile, lang: "ar" | "en" }) {
   const [tab, setTab] = useState<AdminTab>("DASHBOARD");
@@ -33,8 +33,10 @@ export default function AdminDashboard({ user, lang }: { user: UserProfile, lang
     tabContent: lang === "ar" ? "النصائح والإعلانات" : "Content & Ads",
     tabKnowledge: lang === "ar" ? "تدريب المساعد" : "AI Training",
     tabFinance: lang === "ar" ? "المالية" : "Finance",
+    tabPromo: lang === "ar" ? "أكواد الخصم" : "Promo Codes",
     menuList: lang === "ar" ? "قائمة الوجبات" : "Menu List",
     labsList: lang === "ar" ? "قائمة التحاليل" : "Lab List",
+    promoList: lang === "ar" ? "قائمة الأكواد" : "Promo List",
     contentList: lang === "ar" ? "المحتوى الترويجي" : "Promo Content",
     knowledgeList: lang === "ar" ? "قاعدة بيانات الـ AI" : "AI Knowledge Base",
     usersList: lang === "ar" ? "إدارة الأعضاء" : "User Management",
@@ -75,6 +77,7 @@ export default function AdminDashboard({ user, lang }: { user: UserProfile, lang
         else if (tab === "FINANCE") snap = await getDocs(collection(db, "payments"));
         else if (tab === "CONTENT") snap = await getDocs(collection(db, "content"));
         else if (tab === "KNOWLEDGE") snap = await getDocs(collection(db, "knowledge_base"));
+        else if (tab === "PROMO") snap = await getDocs(collection(db, "promo_codes"));
         
         if (snap) {
             setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -94,7 +97,7 @@ export default function AdminDashboard({ user, lang }: { user: UserProfile, lang
   const handleSave = async (data: any) => {
     setLoading(true);
     try {
-        const collectionName = tab === "MENU" ? "menu" : tab === "LABS" ? "labs" : tab === "CONTENT" ? "content" : tab === "KNOWLEDGE" ? "knowledge_base" : "users";
+        const collectionName = tab === "MENU" ? "menu" : tab === "LABS" ? "labs" : tab === "CONTENT" ? "content" : tab === "KNOWLEDGE" ? "knowledge_base" : tab === "PROMO" ? "promo_codes" : "users";
         if (editingItem?.id || editingItem?.uid) {
             const id = editingItem.id || editingItem.uid;
             await updateDoc(doc(db, collectionName, id), data);
@@ -157,7 +160,7 @@ export default function AdminDashboard({ user, lang }: { user: UserProfile, lang
     if (!confirm(t.confirmDelete)) return;
     setLoading(true);
     try {
-        const collectionName = tab === "MENU" ? "menu" : tab === "LABS" ? "labs" : tab === "CONTENT" ? "content" : tab === "KNOWLEDGE" ? "knowledge_base" : "users";
+        const collectionName = tab === "MENU" ? "menu" : tab === "LABS" ? "labs" : tab === "CONTENT" ? "content" : tab === "KNOWLEDGE" ? "knowledge_base" : tab === "PROMO" ? "promo_codes" : "users";
         await deleteDoc(doc(db, collectionName, id));
         fetchTabContent();
     } catch (err) {
@@ -195,6 +198,7 @@ export default function AdminDashboard({ user, lang }: { user: UserProfile, lang
           <TabButton active={tab === "LABS"} onClick={() => setTab("LABS")} icon={<FlaskConical size={14} />} label={t.tabLabs} />
           <TabButton active={tab === "CONTENT"} onClick={() => setTab("CONTENT")} icon={<FileText size={14} />} label={t.tabContent} />
           <TabButton active={tab === "KNOWLEDGE"} onClick={() => setTab("KNOWLEDGE")} icon={<Brain size={14} />} label={t.tabKnowledge} />
+          <TabButton active={tab === "PROMO"} onClick={() => setTab("PROMO")} icon={<Tag size={14} />} label={t.tabPromo} />
           <TabButton active={tab === "FINANCE"} onClick={() => setTab("FINANCE")} icon={<DollarSign size={14} />} label={t.tabFinance} />
         </div>
       </header>
@@ -206,12 +210,13 @@ export default function AdminDashboard({ user, lang }: { user: UserProfile, lang
             <h2 className="text-lg font-black tracking-tight uppercase italic underline decoration-primary/30 decoration-4 underline-offset-4">
                 {tab === "MENU" ? t.menuList : 
                  tab === "LABS" ? t.labsList : 
+                 tab === "PROMO" ? t.promoList :
                  tab === "CONTENT" ? t.contentList :
                  tab === "KNOWLEDGE" ? t.knowledgeList :
                  tab === "USERS" ? t.usersList : 
                  tab === "DASHBOARD" ? t.overview : t.paymentsList}
             </h2>
-            {["MENU", "LABS", "CONTENT", "KNOWLEDGE"].includes(tab) && (
+            {["MENU", "LABS", "CONTENT", "KNOWLEDGE", "PROMO"].includes(tab) && (
                 <button 
                   onClick={() => setIsAdding(true)}
                   className="bg-primary text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-105 transition-all"
@@ -243,7 +248,7 @@ export default function AdminDashboard({ user, lang }: { user: UserProfile, lang
                             </div>
                             <div className="min-w-0">
                                 <h4 className="text-xs font-black truncate max-w-[150px]">
-                                    {getLocalizedString(item.name || item.title || item.question, lang) || item.email || "No Name"}
+                                    {tab === "PROMO" ? item.code : (getLocalizedString(item.name || item.title || item.question, lang) || item.email || "No Name")}
                                 </h4>
                                 <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest truncate">
                                     {tab === "KNOWLEDGE" ? t.aiKnowledgeDesc : tab === "USERS" ? (
@@ -257,6 +262,8 @@ export default function AdminDashboard({ user, lang }: { user: UserProfile, lang
                                             <option value="TRAINER" className="bg-background-dark">{t.trainerRole}</option>
                                             <option value="LAB_MANAGER" className="bg-background-dark">{t.labManagerRole}</option>
                                         </select>
+                                    ) : tab === "PROMO" ? (
+                                        `${item.discountValue}${item.discountType === "PERCENTAGE" ? "%" : ""} - ${item.isActive ? "Active" : "Inactive"}`
                                     ) : (item.category || item.type || formatPrice(item.price || 0, user, item.currency))}
                                 </p>
                             </div>
@@ -389,7 +396,17 @@ function DetailView({ item, type, lang, onClose, onSave }: any) {
         consultationFee: lang === "ar" ? "سجل الاستشارة" : "Consultation Fee",
         serviceCurrency: lang === "ar" ? "عملة الخدمة" : "Service Currency",
         walletBalance: lang === "ar" ? "الرصيد" : "Wallet Balance",
-        accountCurrency: lang === "ar" ? "عملة الحساب" : "Account Currency"
+        accountCurrency: lang === "ar" ? "عملة الحساب" : "Account Currency",
+        promoCode: lang === "ar" ? "الكود" : "Promo Code",
+        discountType: lang === "ar" ? "نوع الخصم" : "Discount Type",
+        discountValue: lang === "ar" ? "قيمة الخصم" : "Discount Value",
+        expiryDate: lang === "ar" ? "تاريخ الانتهاء" : "Expiry Date",
+        maxDiscount: lang === "ar" ? "أقصى خصم" : "Max Discount",
+        minOrderValue: lang === "ar" ? "أقل قيمة للطلب" : "Min Order Value",
+        usageLimit: lang === "ar" ? "حد الاستخدام" : "Usage Limit",
+        isActive: lang === "ar" ? "مفعل" : "Is Active",
+        percentage: lang === "ar" ? "نسبة مئوية" : "Percentage",
+        fixed: lang === "ar" ? "مبلغ ثابت" : "Fixed Amount"
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -430,7 +447,44 @@ function DetailView({ item, type, lang, onClose, onSave }: any) {
                 </div>
 
                 <div className="space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar pr-2">
-                    {["MENU", "LABS", "USERS"].includes(type) ? (
+                    {type === "PROMO" ? (
+                        <>
+                            <InputField label={t.promoCode} value={formData.code || ""} onChange={(v: string) => setFormData({...formData, code: v.toUpperCase()})} />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] px-2">{t.discountType}</label>
+                                    <div className="glass rounded-2xl px-5 border border-white/5 mt-2 overflow-hidden">
+                                        <select 
+                                            value={formData.discountType || "PERCENTAGE"} 
+                                            onChange={(e) => setFormData({...formData, discountType: e.target.value})}
+                                            className="bg-transparent border-none focus:ring-0 text-sm w-full py-4 text-white cursor-pointer"
+                                        >
+                                            <option value="PERCENTAGE" className="bg-background-dark">{t.percentage}</option>
+                                            <option value="FIXED" className="bg-background-dark">{t.fixed}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <InputField label={t.discountValue} value={formData.discountValue || ""} type="number" onChange={(v: any) => setFormData({...formData, discountValue: parseFloat(v)})} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <InputField label={t.maxDiscount} value={formData.maxDiscount || ""} type="number" onChange={(v: any) => setFormData({...formData, maxDiscount: parseFloat(v)})} />
+                                <InputField label={t.minOrderValue} value={formData.minOrderValue || ""} type="number" onChange={(v: any) => setFormData({...formData, minOrderValue: parseFloat(v)})} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <InputField label={t.expiryDate} value={formData.expiryDate ? new Date(formData.expiryDate).toISOString().split('T')[0] : ""} type="date" onChange={(v: any) => setFormData({...formData, expiryDate: new Date(v).getTime()})} />
+                                <InputField label={t.usageLimit} value={formData.usageLimit || ""} type="number" onChange={(v: any) => setFormData({...formData, usageLimit: parseInt(v)})} />
+                            </div>
+                            <div className="flex items-center gap-3 px-2">
+                                <input 
+                                    type="checkbox" 
+                                    checked={formData.isActive ?? true} 
+                                    onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+                                    className="w-5 h-5 rounded border-white/10 bg-white/5 text-primary focus:ring-primary/20"
+                                />
+                                <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest">{t.isActive}</span>
+                            </div>
+                        </>
+                    ) : ["MENU", "LABS", "USERS"].includes(type) ? (
                         <>
                             <div className="grid grid-cols-2 gap-4">
                                 <InputField label={t.nameAr} value={typeof formData.name === 'object' ? (formData.name?.ar || "") : (formData.name || "")} onChange={(v: string) => setFormData({...formData, name: { ...(typeof formData.name === 'object' ? formData.name : {}), ar: v }})} />

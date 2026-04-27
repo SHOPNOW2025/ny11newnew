@@ -7,7 +7,7 @@ import { Mail, Lock, User, ArrowRight, Activity, ChevronLeft, Target, Scale, Cal
 import { useNavigate } from "react-router-dom";
 import { getAiHealthAdvice } from "../services/aiAssistant";
 
-export default function AuthPage() {
+export default function AuthPage({ lang }: { lang: "ar" | "en" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
@@ -83,7 +83,7 @@ export default function AuthPage() {
               <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/20 rotate-12">
                 <Activity size={40} className="text-background-dark -rotate-12" />
               </div>
-              <h1 className="text-3xl font-black tracking-tighter italic uppercase text-primary">NY11 Health</h1>
+              <h1 className="text-3xl font-black tracking-tighter italic uppercase text-primary">NY11 RESTAURANT</h1>
               <p className="text-white/40 text-xs font-bold uppercase tracking-widest mt-2">{isLogin ? "تسجيل الدخول" : "إنشاء حساب جديد"}</p>
             </div>
 

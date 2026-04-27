@@ -23,7 +23,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { formatPrice } from "../lib/currency";
 import { uploadImage } from "../services/imageService";
 
-export default function ProfilePage({ user }: { user: UserProfile }) {
+import { getLocalizedString } from "../lib/utils";
+
+export default function ProfilePage({ user, lang }: { user: UserProfile, lang: "ar" | "en" }) {
   const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
 
@@ -77,7 +79,7 @@ export default function ProfilePage({ user }: { user: UserProfile }) {
           </div>
         </label>
         <div className="text-center">
-          <h1 className="text-2xl font-black italic tracking-tighter">{user.name}</h1>
+          <h1 className="text-2xl font-black italic tracking-tighter">{getLocalizedString(user.name, lang)}</h1>
           <p className="text-white/40 text-xs mt-1 lowercase">{user.email}</p>
         </div>
       </header>

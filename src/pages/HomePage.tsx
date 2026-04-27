@@ -7,22 +7,42 @@ import { collection, query, limit, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Link, useNavigate } from "react-router-dom";
 import { getAiHealthAdvice } from "../services/aiAssistant";
+import { getLocalizedString } from "../lib/utils";
 
-import { t } from "../lib/translations";
 import { formatPrice } from "../lib/currency";
 
-export default function HomePage({ user }: { user: UserProfile | null }) {
+export default function HomePage({ user, lang }: { user: UserProfile | null, lang: "ar" | "en" }) {
   const [featuredFood, setFeaturedFood] = useState<MenuItem[]>([]);
-  const [generalAdvice, setGeneralAdvice] = useState<string>("جاري تحضير نصيحتك الصحية اليومية...");
-  const navigate = useNavigate();
+  const [generalAdvice, setGeneralAdvice] = useState<string>("");
+
+  const t = {
+    guest: lang === "ar" ? "زائر" : "GUEST USER",
+    elevate: lang === "ar" ? "ارتقِ بحياتك" : "ELEVATE YOUR LIFE",
+    fuel: lang === "ar" ? "غذِّ" : "FUEL YOUR",
+    potential: lang === "ar" ? "طاقتك" : "POTENTIAL",
+    heroDesc: lang === "ar" ? "علوم التغذية المتقدمة ودقة المختبرات، مصممة خصيصاً لأهدافك." : "Advanced nutritional science and laboratory precision, tailored for your goals.",
+    explore: lang === "ar" ? "استكشف المنيو" : "Explore menu",
+    dailyPerformance: lang === "ar" ? "الأداء اليومي" : "Daily Performance",
+    activity: lang === "ar" ? "النشاط" : "Activity",
+    nutrition: lang === "ar" ? "التغذية" : "Nutrition",
+    goal: lang === "ar" ? "هدف" : "Goal",
+    aiTitle: lang === "ar" ? "مستشار الذكاء الاصطناعي" : "AI Intelligent Counsel",
+    menu: lang === "ar" ? "المنيو" : "Menu",
+    lab: lang === "ar" ? "المختبر" : "Lab",
+    clinic: lang === "ar" ? "المدربون" : "Clinic",
+    track: lang === "ar" ? "المتابعة" : "Track",
+    chefSelection: lang === "ar" ? "اختيارات" : "Chef's",
+    chefSelectionSub: lang === "ar" ? "الشيف" : "Selection",
+    loadingAdvice: lang === "ar" ? "جاري تحضير نصيحتك الصحية اليومية..." : "Preparing your daily health advice..."
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       const foodSnap = await getDocs(query(collection(db, "menu"), limit(4)));
       setFeaturedFood(foodSnap.docs.map(d => ({ id: d.id, ...d.data() } as MenuItem)));
       
-      const CACHE_KEY = "daily_advice";
-      const CACHE_TIME_KEY = "daily_advice_timestamp";
+      const CACHE_KEY = `daily_advice_${lang}`;
+      const CACHE_TIME_KEY = `daily_advice_timestamp_${lang}`;
       const ONE_DAY = 24 * 60 * 60 * 1000;
       
       const cachedAdvice = localStorage.getItem(CACHE_KEY);
@@ -32,14 +52,18 @@ export default function HomePage({ user }: { user: UserProfile | null }) {
       if (cachedAdvice && cachedTime && (now - parseInt(cachedTime)) < ONE_DAY) {
         setGeneralAdvice(cachedAdvice);
       } else {
-        const advice = await getAiHealthAdvice("قدم نصيحة صحية قصيرة ومحفزة اليوم لزوار تطبيق NY11.");
+        const userName = getLocalizedString(user?.name, lang) || (lang === 'ar' ? 'زائر' : 'Guest');
+        const prompt = lang === "ar" 
+          ? `قدم نصيحة صحية قصيرة ومحفزة اليوم مخصصة للمستخدم (${userName}) في تطبيق NY11 RESTAURANT باللغة العربية.` 
+          : `Give a short, motivating health tip today personalized for (${userName}) in NY11 RESTAURANT app in English.`;
+        const advice = await getAiHealthAdvice(prompt);
         setGeneralAdvice(advice);
         localStorage.setItem(CACHE_KEY, advice);
         localStorage.setItem(CACHE_TIME_KEY, now.toString());
       }
     };
     fetchData();
-  }, []);
+  }, [lang, user?.name]);
 
   return (
     <div className="flex flex-col flex-1 pb-32 overflow-x-hidden">
@@ -63,8 +87,8 @@ export default function HomePage({ user }: { user: UserProfile | null }) {
             </div>
           </div>
           <div>
-            <h1 className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">NY11 Clinic</h1>
-            <p className="text-sm font-black italic tracking-tighter">{user?.name || "GUEST USER"}</p>
+            <h1 className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">NY11 RESTAURANT</h1>
+            <p className="text-sm font-black italic tracking-tighter">{getLocalizedString(user?.name, lang) || t.guest}</p>
           </div>
         </motion.div>
         
@@ -78,7 +102,7 @@ export default function HomePage({ user }: { user: UserProfile | null }) {
               />
             </Link>
           ) : (
-            <Link to="/auth" className="glass px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-primary border-primary/20">Login</Link>
+            <Link to="/auth" className="glass px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-primary border-primary/20">{lang === "ar" ? "دخول" : "Login"}</Link>
           )}
         </div>
       </header>
@@ -102,18 +126,18 @@ export default function HomePage({ user }: { user: UserProfile | null }) {
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <span className="w-8 h-[1px] bg-primary" />
-                  <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">ELEVATE YOUR LIFE</span>
+                  <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">{t.elevate}</span>
                 </div>
                 <h2 className="text-5xl font-black italic tracking-tighter uppercase whitespace-pre-line">
-                  FUEL YOUR<br/>
-                  <span className="text-glow text-primary italic">POTENTIAL</span>
+                  {t.fuel}<br/>
+                  <span className="text-glow text-primary italic">{t.potential}</span>
                 </h2>
                 <p className="text-[var(--text-muted)] text-xs font-medium max-w-[200px] leading-relaxed">
-                  Advanced nutritional science and laboratory precision, tailored for your goals.
+                  {t.heroDesc}
                 </p>
                 <div className="pt-4">
                   <Link to="/menu" className="glass px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-3 group/btn hover:bg-primary hover:text-black transition-all">
-                    Explore menu <Utensils size={14} className="group-hover/btn:translate-x-1 transition-transform" />
+                    {t.explore} <Utensils size={14} className="group-hover/btn:translate-x-1 transition-transform" />
                   </Link>
                 </div>
               </div>
@@ -123,10 +147,10 @@ export default function HomePage({ user }: { user: UserProfile | null }) {
 
         {/* Quick Insights Bento */}
         <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.4em] px-2">Daily Performance</h3>
+          <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.4em] px-2">{t.dailyPerformance}</h3>
           <div className="grid grid-cols-2 gap-4">
-            <StatCard icon={<Activity size={18} />} title="Activity" value="84" unit="%" color="primary" />
-            <StatCard icon={<Sparkles size={18} />} title="Nutrition" value="Goal" unit="" color="primary" />
+            <StatCard icon={<Activity size={18} />} title={t.activity} value="84" unit="%" color="primary" />
+            <StatCard icon={<Sparkles size={18} />} title={t.nutrition} value={t.goal} unit="" color="primary" />
             
             <div className="col-span-2 glass rounded-[2.5rem] p-8 border-white/5 relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
@@ -135,9 +159,9 @@ export default function HomePage({ user }: { user: UserProfile | null }) {
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-[10px] font-black text-primary uppercase tracking-widest">AI Intelligent Counsel</span>
+                  <span className="text-[10px] font-black text-primary uppercase tracking-widest">{t.aiTitle}</span>
                 </div>
-                <p className="text-lg font-bold leading-tight text-[var(--text-main)] italic max-w-[280px]">
+                <p className="text-sm font-bold leading-tight text-[var(--text-main)] italic max-w-[280px]">
                   "{generalAdvice}"
                 </p>
               </div>
@@ -147,17 +171,17 @@ export default function HomePage({ user }: { user: UserProfile | null }) {
 
         {/* Service Grid - Modern Minimal Icons */}
         <section className="grid grid-cols-4 gap-4">
-          <CategoryItem to="/menu" icon={<Utensils size={24} />} label="Menu" />
-          <CategoryItem to="/lab" icon={<FlaskConical size={24} />} label="Lab" />
-          <CategoryItem to="/clinic" icon={<Activity size={24} />} label="Clinic" />
-          <CategoryItem to="/plan" icon={<Search size={24} />} label="Track" />
+          <CategoryItem to="/menu" icon={<Utensils size={24} />} label={t.menu} />
+          <CategoryItem to="/lab" icon={<FlaskConical size={24} />} label={t.lab} />
+          <CategoryItem to="/clinic" icon={<Activity size={24} />} label={t.clinic} />
+          <CategoryItem to="/plan" icon={<Search size={24} />} label={t.track} />
         </section>
 
         {/* Curation Section */}
         <section className="space-y-6 pt-4">
           <div className="flex items-center justify-between px-2">
             <div>
-              <h2 className="text-2xl font-black italic tracking-tighter uppercase whitespace-pre-line">Chef's<br/><span className="text-primary not-italic">Selection</span></h2>
+              <h2 className="text-2xl font-black italic tracking-tighter uppercase whitespace-pre-line">{t.chefSelection}<br/><span className="text-primary not-italic">{t.chefSelectionSub}</span></h2>
             </div>
             <Link to="/menu" className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
               <ArrowRight size={20} />
@@ -186,8 +210,8 @@ export default function HomePage({ user }: { user: UserProfile | null }) {
                     </div>
                   </div>
                   <div className="px-4">
-                    <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">{t(item.category)}</span>
-                    <h4 className="text-lg font-black tracking-tighter uppercase truncate text-[var(--text-main)]">{t(item.name)}</h4>
+                    <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">{item.category}</span>
+                    <h4 className="text-lg font-black tracking-tighter uppercase truncate text-[var(--text-main)]">{item.name[lang] || item.name}</h4>
                   </div>
                 </Link>
               </motion.div>

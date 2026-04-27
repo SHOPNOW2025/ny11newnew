@@ -7,9 +7,8 @@ import { motion } from "motion/react";
 import { ArrowRight, Share2, Info, ShoppingBag, Flame, Zap, Droplets, Clock } from "lucide-react";
 import { formatPrice } from "../lib/currency";
 import { useCart } from "../context/CartContext";
-import { t } from "../lib/translations";
 
-export default function MenuItemPage({ user }: { user: UserProfile | null }) {
+export default function MenuItemPage({ user, lang }: { user: UserProfile | null, lang: "ar" | "en" }) {
     const { id } = useParams();
     const navigate = useNavigate();
     const { addToCart } = useCart();
@@ -45,7 +44,7 @@ export default function MenuItemPage({ user }: { user: UserProfile | null }) {
                 </button>
                 <div className="text-center">
                     <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">{item.category}</span>
-                    <h1 className="text-xl font-black">{t(item.name)}</h1>
+                    <h1 className="text-xl font-black">{item.name}</h1>
                 </div>
                 <button onClick={handleShare} className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-white/40 hover:text-white transition-colors">
                     <Share2 size={20} />
@@ -58,7 +57,7 @@ export default function MenuItemPage({ user }: { user: UserProfile | null }) {
                     animate={{ scale: 1, opacity: 1 }}
                     className="aspect-square rounded-[3rem] overflow-hidden shadow-2xl border border-white/5 bg-white/5 relative"
                 >
-                    <img src={item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600"} className="w-full h-full object-cover" alt={t(item.name)} />
+                    <img src={item.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600"} className="w-full h-full object-cover" alt={item.name} />
                     <div className="absolute top-6 left-6 glass px-5 py-3 rounded-2xl flex flex-col items-center">
                       <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">السعر</p>
                       <p className="text-lg font-black text-primary">{formatPrice(item.price, user, item.currency)}</p>
@@ -88,7 +87,7 @@ export default function MenuItemPage({ user }: { user: UserProfile | null }) {
                         <Info size={18} className="text-primary"/> معلومات الوجبة
                     </h2>
                     <p className="text-white/60 leading-relaxed text-sm">
-                        {t(item.description)}
+                        {item.description}
                     </p>
                 </div>
 

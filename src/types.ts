@@ -5,6 +5,7 @@ export interface UserProfile {
   name: string;
   email: string;
   role: UserRole;
+  language?: "ar" | "en";
   walletBalance: number;
   profilePic?: string;
   createdAt: number;
@@ -28,10 +29,15 @@ export interface KnowledgeBaseItem {
   createdAt: number;
 }
 
+export interface LocalizedString {
+  ar: string;
+  en: string;
+}
+
 export interface MenuItem {
   id: string;
-  name: string | { ar: string; en: string };
-  description: string | { ar: string; en: string };
+  name: LocalizedString;
+  description: LocalizedString;
   price: number;
   currency?: "USD" | "JOD";
   calories: number;
@@ -45,8 +51,8 @@ export interface MenuItem {
 
 export interface LabTest {
   id: string;
-  name: string | { ar: string; en: string };
-  description: string | { ar: string; en: string };
+  name: LocalizedString;
+  description: LocalizedString;
   price: number;
   currency?: "USD" | "JOD";
   category: string;
@@ -55,13 +61,13 @@ export interface LabTest {
 
 export interface Expert {
   id: string;
-  name: string;
+  name: LocalizedString;
   role: "TRAINER" | "LAB_MANAGER";
   rating: number;
   price: number;
   currency?: "USD" | "JOD";
   image: string;
-  bio: string;
+  bio: LocalizedString;
   online?: boolean;
 }
 

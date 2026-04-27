@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Calendar, Utensils, Brain, Sparkles, ChevronLeft, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { getAiHealthAdvice } from "../services/aiAssistant";
 
-export default function PlanPage({ user }: { user: UserProfile }) {
+export default function PlanPage({ user, lang }: { user: UserProfile, lang: "ar" | "en" }) {
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<any>(null);
   const [menu, setMenu] = useState<MenuItem[]>([]);

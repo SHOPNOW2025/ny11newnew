@@ -7,9 +7,8 @@ import { motion } from "motion/react";
 import { FlaskConical, Search, Dna, Microscope, HeartPulse, ChevronLeft, MessageCircle, ShoppingBag, Info, Plus } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { t } from "../lib/translations";
 
-export default function LabPage({ user }: { user?: UserProfile | null }) {
+export default function LabPage({ user, lang }: { user?: UserProfile | null, lang: "ar" | "en" }) {
   const [tests, setTests] = useState<LabTest[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -24,6 +23,20 @@ export default function LabPage({ user }: { user?: UserProfile | null }) {
     fetch();
   }, []);
 
+  const t = {
+    labTitle: lang === "ar" ? "المختبر الصحي" : "Health Lab",
+    labSubtitle: lang === "ar" ? "Lab & Diagnostics" : "Diagnostic Services",
+    whyLab: lang === "ar" ? "لماذا التحاليل الطبية؟" : "Why Lab Tests?",
+    labDesc: lang === "ar" ? "تساعدك التحاليل في فهم جسمك بشكل أدق وتصميم خطة غذائية ورياضية تناسب احتياجاتك البيولوجية وليست مجرد خطة عامة." : "Lab tests help you understand your body more accurately and design a nutritional and exercise plan that suits your biological needs, not just a general plan.",
+    hormones: lang === "ar" ? "هرمونات" : "Hormones",
+    vitamins: lang === "ar" ? "فيتامينات" : "Vitamins",
+    comprehensive: lang === "ar" ? "شامل" : "Comprehensive",
+    availableTests: lang === "ar" ? "الفحوصات المتاحة" : "Available Tests",
+    results24: lang === "ar" ? "نتائج خلال 24 ساعة" : "Results in 24h",
+    managerUnavailable: lang === "ar" ? "عذراً، مدير المختبر غير متاح حالياً. يرجى المحاولة لاحقاً." : "Sorry, Lab Manager is not available now. Please try again later.",
+    chatStarted: lang === "ar" ? "بدأت الدردشة مع المختبر" : "Chat started with lab"
+  };
+
   const startLabChat = async () => {
     if (!user) return navigate("/auth");
 
@@ -34,7 +47,7 @@ export default function LabPage({ user }: { user?: UserProfile | null }) {
       const managerSnap = await getDocs(managersQuery);
       
       if (managerSnap.empty) {
-        alert("عذراً، مدير المختبر غير متاح حالياً. يرجى المحاولة لاحقاً.");
+        alert(t.managerUnavailable);
         setLoading(false);
         return;
       }
@@ -57,7 +70,7 @@ export default function LabPage({ user }: { user?: UserProfile | null }) {
           expertId: managerId,
           type: "EXPERT",
           updatedAt: Date.now(),
-          lastMessage: "بدأت الدردشة مع المختبر"
+          lastMessage: t.chatStarted
         });
         navigate(`/chat/${newRoom.id}`);
       } else {
@@ -78,8 +91,8 @@ export default function LabPage({ user }: { user?: UserProfile | null }) {
               <FlaskConical size={24} className="-rotate-12" />
             </div>
             <div>
-              <h1 className="text-2xl font-black italic tracking-tighter uppercase underline decoration-primary decoration-4 underline-offset-4">المختبر الصحي</h1>
-              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">Lab & Diagnostics</p>
+              <h1 className="text-2xl font-black italic tracking-tighter uppercase underline decoration-primary decoration-4 underline-offset-4">{t.labTitle}</h1>
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">{t.labSubtitle}</p>
             </div>
           </div>
           <button 
@@ -91,20 +104,20 @@ export default function LabPage({ user }: { user?: UserProfile | null }) {
         </div>
 
         <div className="glass rounded-2xl p-6 flex flex-col gap-4">
-          <h2 className="text-sm font-bold text-primary">لماذا التحاليل الطبية؟</h2>
-          <p className="text-xs text-white/60 leading-relaxed">تساعدك التحاليل في فهم جسمك بشكل أدق وتصميم خطة غذائية ورياضية تناسب احتياجاتك البيولوجية وليست مجرد خطة عامة.</p>
+          <h2 className="text-sm font-bold text-primary">{t.whyLab}</h2>
+          <p className="text-xs text-white/60 leading-relaxed">{t.labDesc}</p>
         </div>
       </header>
 
       <main className="p-4 space-y-6">
         <div className="grid grid-cols-3 gap-2">
-          <Category icon={<Dna size={18} />} label="هرمونات" />
-          <Category icon={<Microscope size={18} />} label="فيتامينات" />
-          <Category icon={<HeartPulse size={18} />} label="شامل" />
+          <Category icon={<Dna size={18} />} label={t.hormones} />
+          <Category icon={<Microscope size={18} />} label={t.vitamins} />
+          <Category icon={<HeartPulse size={18} />} label={t.comprehensive} />
         </div>
 
         <div className="space-y-4">
-          <h3 className="font-bold text-sm px-1">الفحوصات المتاحة</h3>
+          <h3 className="font-bold text-sm px-1">{t.availableTests}</h3>
           {loading ? (
             [1, 2].map(i => <div key={i} className="h-24 glass rounded-3xl animate-pulse" />)
           ) : (
@@ -126,8 +139,8 @@ export default function LabPage({ user }: { user?: UserProfile | null }) {
                   </Link>
                   <div>
                     <Link to={`/lab/${test.id}`}>
-                      <h4 className="font-bold text-sm tracking-tight">{t(test.name)}</h4>
-                      <p className="text-[10px] text-white/40 mt-1">{test.category} • نتائج خلال 24 ساعة</p>
+                      <h4 className="font-bold text-sm tracking-tight">{test.name?.[lang]}</h4>
+                      <p className="text-[10px] text-white/40 mt-1">{test.category} • {t.results24}</p>
                     </Link>
                   </div>
                 </div>

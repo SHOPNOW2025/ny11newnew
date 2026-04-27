@@ -7,9 +7,8 @@ import { motion } from "motion/react";
 import { Search, Filter, ShoppingBag, Info, Activity, Zap, Plus, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { t } from "../lib/translations";
 
-export default function MenuPage({ user }: { user?: UserProfile | null }) {
+export default function MenuPage({ user, lang }: { user?: UserProfile | null, lang: "ar" | "en" }) {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -33,21 +32,31 @@ export default function MenuPage({ user }: { user?: UserProfile | null }) {
     { id: "مشروبات", ar: "مشروبات", en: "DRINKS" }
   ];
 
-  const filtered = items.filter(item => {
-    const name = t(item.name);
-    const desc = t(item.description);
-    return (selectedCategory === "ALL" || item.category === selectedCategory) &&
-    (name.includes(search) || (desc && desc.includes(search)));
-  });
+  const filtered = items.filter(item => 
+    (selectedCategory === "ALL" || item.category === selectedCategory) &&
+    ((item.name?.[lang] || "").includes(search) || (item.description?.[lang] && item.description[lang].includes(search)))
+  );
+
+  const t = {
+    gastronomy: lang === "ar" ? "فن الطهو" : "GASTRONOMY",
+    excellence: lang === "ar" ? "التميز الغذائي" : "EXCELLENCE",
+    dietary: lang === "ar" ? "نظام" : "DIETARY",
+    findFuel: lang === "ar" ? "ابحث عن طاقتك..." : "Find your fuel...",
+    orderNow: lang === "ar" ? "اطلب الآن" : "Order Now",
+    noMatch: lang === "ar" ? "لا توجد نتائج" : "No Match Found",
+    protein: lang === "ar" ? "بروتين" : "Protein",
+    carbs: lang === "ar" ? "كارب" : "Carbs",
+    fats: lang === "ar" ? "دهون" : "Fats"
+  };
 
   return (
     <div className="flex flex-col flex-1 pb-40 overflow-x-hidden">
       <header className="p-6 pt-10 space-y-8">
         <div className="space-y-1">
-          <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">GASTRONOMY</h2>
+          <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">{t.gastronomy}</h2>
           <h1 className="text-4xl font-black italic tracking-tighter uppercase whitespace-pre-line text-[var(--text-main)]">
-            DIETARY<br/>
-            <span className="text-primary not-italic">EXCELLENCE</span>
+            {t.dietary}<br/>
+            <span className="text-primary not-italic">{t.excellence}</span>
           </h1>
         </div>
         
@@ -56,7 +65,7 @@ export default function MenuPage({ user }: { user?: UserProfile | null }) {
             <Search size={18} className="text-[var(--text-muted)]" />
             <input 
               type="text" 
-              placeholder="Find your fuel..." 
+              placeholder={t.findFuel} 
               className="bg-transparent border-none focus:ring-0 text-sm w-full font-bold placeholder:text-[var(--text-muted)] text-[var(--text-main)]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -78,7 +87,7 @@ export default function MenuPage({ user }: { user?: UserProfile | null }) {
                   : "glass text-[var(--text-muted)] border-white/5"
               }`}
             >
-              {cat.en}
+              {lang === "ar" ? cat.ar : cat.en}
             </button>
           ))}
         </div>
@@ -99,7 +108,7 @@ export default function MenuPage({ user }: { user?: UserProfile | null }) {
             >
               <div className="glass rounded-[3.5rem] overflow-hidden border-white/[0.03] shadow-2xl relative">
                 <Link to={`/menu/${item.id}`} className="block relative h-64 overflow-hidden">
-                  <img src={item.image} className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-1000" alt={t(item.name)} />
+                  <img src={item.image} className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-1000" alt={item.name?.[lang]} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                   
                   <div className="absolute top-6 left-6 glass px-5 py-2 rounded-2xl flex items-center gap-3">
@@ -112,15 +121,15 @@ export default function MenuPage({ user }: { user?: UserProfile | null }) {
                   <div className="flex justify-between items-start">
                     <Link to={`/menu/${item.id}`} className="flex-1 space-y-1">
                       <span className="text-[10px] text-primary font-black uppercase tracking-[0.2em]">{item.category}</span>
-                      <h3 className="text-xl font-black tracking-tighter uppercase mb-1 text-[var(--text-main)]">{t(item.name)}</h3>
-                      <p className="text-xs text-[var(--text-muted)] font-medium leading-relaxed line-clamp-1">{t(item.description)}</p>
+                      <h3 className="text-xl font-black tracking-tighter uppercase mb-1 text-[var(--text-main)]">{item.name?.[lang]}</h3>
+                      <p className="text-xs text-[var(--text-muted)] font-medium leading-relaxed line-clamp-1">{item.description?.[lang]}</p>
                     </Link>
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 py-4 border-y border-white/[0.03]">
-                    <MacroItem label="Protein" value={item.protein} unit="g" />
-                    <MacroItem label="Carbs" value={item.carbs} unit="g" />
-                    <MacroItem label="Fats" value={item.fats} unit="g" />
+                    <MacroItem label={t.protein} value={item.protein} unit="g" />
+                    <MacroItem label={t.carbs} value={item.carbs} unit="g" />
+                    <MacroItem label={t.fats} value={item.fats} unit="g" />
                   </div>
 
                   <div className="flex gap-4 pt-2">
@@ -129,7 +138,7 @@ export default function MenuPage({ user }: { user?: UserProfile | null }) {
                       className="flex-1 primary-gradient text-background-dark font-black py-5 rounded-[2rem] flex items-center justify-center gap-3 text-sm shadow-xl shadow-primary/20 active:scale-95 transition-all uppercase tracking-widest"
                     >
                       <ShoppingBag size={18} />
-                      Order Now
+                      {t.orderNow}
                     </button>
                     <Link to={`/menu/${item.id}`} className="w-16 h-16 glass rounded-[2rem] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
                       <ArrowRight size={20} />

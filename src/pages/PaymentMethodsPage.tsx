@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, Plus, CreditCard, MapPin, Trash2, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export default function PaymentMethodsPage({ user }: { user: UserProfile }) {
+export default function PaymentMethodsPage({ user, lang }: { user: UserProfile, lang: "ar" | "en" }) {
     const navigate = useNavigate();
     const [cards, setCards] = useState([
         { id: "1", last4: "4242", expiry: "12/26", type: "VISA" },
@@ -97,7 +97,7 @@ export default function PaymentMethodsPage({ user }: { user: UserProfile }) {
                     <div className="space-y-1">
                         <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-main)] underline decoration-primary/30 decoration-4">Secure Infrastructure</h3>
                         <p className="text-[10px] font-medium text-[var(--text-muted)] leading-relaxed max-w-[200px]">
-                            All your payment data is encrypted and handled via NY11 advanced security protocols.
+                            All your payment data is encrypted and handled via NY11 RESTAURANT advanced security protocols.
                         </p>
                     </div>
                 </div>

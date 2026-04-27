@@ -7,118 +7,156 @@ import { useCart } from "../context/CartContext";
 import { formatPrice } from "../lib/currency";
 import { db } from "../lib/firebase";
 import { collection, addDoc, doc, updateDoc, increment } from "firebase/firestore";
-import { t } from "../lib/translations";
 
-export default function CartPage({ user }: { user: UserProfile | null }) {
+export default function CartPage({ user, lang }: { user: UserProfile | null, lang: "ar" | "en" }) {
     const navigate = useNavigate();
     const { items, total, removeFromCart, updateQuantity, clearCart } = useCart();
     const [loading, setLoading] = useState(false);
 
-    const handleCheckout = () => {
-        if (!user) {
-            navigate("/auth");
-            return;
-        }
-        navigate("/payment");
-    };
+  const t = {
+    walletError: lang === "ar" ? "رصيد المحفظة غير كافٍ!" : "Insufficient wallet balance!",
+    success: lang === "ar" ? "تمت عملية الشراء بنجاح!" : "Purchase successful!",
+    fail: lang === "ar" ? "فشلت عملية الدفع" : "Payment failed",
+    empty: lang === "ar" ? "سلة المشتريات فارغة" : "Your cart is empty",
+    emptySub: lang === "ar" ? "ابدأ بإضافة بعض الوجبات أو التحاليل" : "Start adding some meals or lab tests",
+    browse: lang === "ar" ? "تصفح المنيو" : "Browse Menu",
+    cart: lang === "ar" ? "سلة المشتريات" : "Shopping Cart",
+    items: lang === "ar" ? "منتجات" : "items",
+    subtotal: lang === "ar" ? "المجموع الفرعي" : "Subtotal",
+    paying: lang === "ar" ? "جاري الدفع..." : "Paying...",
+    checkout: lang === "ar" ? "إتمام الشراء" : "Complete Purchase",
+    purchaseDesc: lang === "ar" ? (n: number) => `شراء ${n} منتجات` : (n: number) => `Purchase ${n} items`
+  };
 
-    if (items.length === 0) {
-        return (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6">
-                <div className="w-24 h-24 glass rounded-[2.5rem] flex items-center justify-center text-[var(--text-muted)] opacity-20">
-                    <ShoppingBag size={48} />
-                </div>
-                <div className="text-center">
-                    <h2 className="text-xl font-bold">سلة المشتريات فارغة</h2>
-                    <p className="text-[var(--text-muted)] text-xs mt-1">ابدأ بإضافة بعض الوجبات أو التحاليل</p>
-                </div>
-                <button 
-                    onClick={() => navigate("/menu")}
-                    className="primary-gradient text-background-dark px-10 py-4 rounded-2xl font-bold text-sm shadow-xl"
-                >
-                    تصفح المنيو
-                </button>
-            </div>
-        );
+  const handleCheckout = async () => {
+    if (!user) {
+      navigate("/auth");
+      return;
     }
 
+    const orderData = {
+      userName: user.name,
+      items: items.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        currency: item.currency || "JOD",
+        image: item.image || null,
+        type: item.type,
+        quantity: item.quantity
+      })),
+      total: total
+    };
+
+    navigate("/payment", {
+      state: {
+        amount: total,
+        currency: items[0]?.currency || "JOD",
+        type: "ORDER",
+        orderData
+      }
+    });
+  };
+
+  if (items.length === 0) {
     return (
-        <div className="flex-1 flex flex-col pt-12 pb-32">
-            <div className="px-6 flex items-center justify-between mb-8">
-                <button onClick={() => navigate(-1)} className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-[var(--text-muted)] border-[var(--border-muted)]">
-                    <ChevronLeft size={20} />
-                </button>
-                <div className="text-center">
-                    <h1 className="text-xl font-black italic tracking-tighter uppercase text-[var(--text-main)]">سلة المشتريات</h1>
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">{items.length} منتجات</p>
-                </div>
-                <div className="w-12" />
-            </div>
-
-            <div className="px-6 space-y-4 flex-1 overflow-y-auto no-scrollbar pb-12">
-                <AnimatePresence>
-                    {items.map((item) => (
-                        <motion.div 
-                            key={item.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            className="glass rounded-3xl p-4 flex gap-4 items-center border-[var(--border-muted)]"
-                        >
-                            <div className="w-20 h-20 rounded-2xl overflow-hidden glass shrink-0">
-                                {item.image ? (
-                                    <img src={item.image} className="w-full h-full object-cover" alt={t(item.name)} />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary">
-                                        <ShoppingBag size={24} />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="font-bold text-sm truncate pr-2 text-[var(--text-main)]">{t(item.name)}</h3>
-                                    <button onClick={() => removeFromCart(item.id)} className="text-[var(--text-muted)] hover:text-red-500 transition-colors">
-                                        <X size={16} />
-                                    </button>
-                                </div>
-                                <p className="text-[10px] font-bold text-primary mt-1">{formatPrice(item.price, user, item.currency)}</p>
-                                
-                                <div className="flex items-center gap-3 mt-3">
-                                    <div className="flex items-center glass rounded-xl border-[var(--border-muted)] px-1">
-                                        <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)]"><Minus size={14} /></button>
-                                        <span className="w-8 text-center text-xs font-bold text-[var(--text-main)]">{item.quantity}</span>
-                                        <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)]"><Plus size={14} /></button>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </div>
-
-            <div className="px-6 pb-6 pt-4 space-y-4 bg-[var(--bg-main)]/80 backdrop-blur-xl border-t border-[var(--border-muted)]">
-                <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-[var(--text-muted)] px-2 uppercase font-bold tracking-widest">
-                        <span>المجموع الفرعي</span>
-                        <span>{formatPrice(total, user)}</span>
-                    </div>
-                </div>
-
-                <button 
-                    onClick={handleCheckout}
-                    disabled={loading}
-                    className="w-full primary-gradient text-background-dark py-6 rounded-3xl font-black flex items-center justify-center gap-3 shadow-2xl active:scale-95 transition-all disabled:opacity-50"
-                >
-                    {loading ? (
-                        <span className="animate-pulse">جاري الدفع...</span>
-                    ) : (
-                        <>
-                            <CreditCard size={20} />
-                            إتمام الشراء • {formatPrice(total, user)}
-                        </>
-                    )}
-                </button>
-            </div>
+      <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6">
+        <div className="w-24 h-24 glass rounded-[2.5rem] flex items-center justify-center text-[var(--text-muted)] opacity-20">
+          <ShoppingBag size={48} />
         </div>
+        <div className="text-center">
+          <h2 className="text-xl font-bold">{t.empty}</h2>
+          <p className="text-[var(--text-muted)] text-xs mt-1">{t.emptySub}</p>
+        </div>
+        <button 
+          onClick={() => navigate("/menu")}
+          className="primary-gradient text-background-dark px-10 py-4 rounded-2xl font-bold text-sm shadow-xl"
+        >
+          {t.browse}
+        </button>
+      </div>
     );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col pt-12 pb-32">
+      <div className="px-6 flex items-center justify-between mb-8">
+        <button onClick={() => navigate(-1)} className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-[var(--text-muted)] border-[var(--border-muted)]">
+          <ChevronLeft size={20} />
+        </button>
+        <div className="text-center">
+          <h1 className="text-xl font-black italic tracking-tighter uppercase text-[var(--text-main)]">{t.cart}</h1>
+          <p className="text-[10px] font-bold text-primary uppercase tracking-widest">{items.length} {t.items}</p>
+        </div>
+        <div className="w-12" />
+      </div>
+
+      <div className="px-6 space-y-4 flex-1 overflow-y-auto no-scrollbar pb-12">
+        <AnimatePresence>
+          {items.map((item) => (
+            <motion.div 
+              key={item.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="glass rounded-3xl p-4 flex gap-4 items-center border-[var(--border-muted)]"
+            >
+              <div className="w-20 h-20 rounded-2xl overflow-hidden glass shrink-0">
+                {item.image ? (
+                  <img src={item.image} className="w-full h-full object-cover" alt={typeof item.name === 'object' ? item.name[lang] : item.name} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary">
+                    <ShoppingBag size={24} />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-sm truncate pr-2 text-[var(--text-main)]">
+                    {typeof item.name === 'object' ? item.name[lang] : item.name}
+                  </h3>
+                  <button onClick={() => removeFromCart(item.id)} className="text-[var(--text-muted)] hover:text-red-500 transition-colors">
+                    <X size={16} />
+                  </button>
+                </div>
+                <p className="text-[10px] font-bold text-primary mt-1">{formatPrice(item.price, user, item.currency)}</p>
+                
+                <div className="flex items-center gap-3 mt-3">
+                  <div className="flex items-center glass rounded-xl border-[var(--border-muted)] px-1">
+                    <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)]"><Minus size={14} /></button>
+                    <span className="w-8 text-center text-xs font-bold text-[var(--text-main)]">{item.quantity}</span>
+                    <button onClick={() => updateQuantity(item.id, 1)} className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-main)]"><Plus size={14} /></button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      <div className="px-6 pb-6 pt-4 space-y-4 bg-[var(--bg-main)]/80 backdrop-blur-xl border-t border-[var(--border-muted)]">
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs text-[var(--text-muted)] px-2 uppercase font-bold tracking-widest">
+            <span>{t.subtotal}</span>
+            <span>{formatPrice(total, user)}</span>
+          </div>
+        </div>
+
+        <button 
+          onClick={handleCheckout}
+          disabled={loading}
+          className="w-full primary-gradient text-background-dark py-6 rounded-3xl font-black flex items-center justify-center gap-3 shadow-2xl active:scale-95 transition-all disabled:opacity-50"
+        >
+          {loading ? (
+            <span className="animate-pulse">{t.paying}</span>
+          ) : (
+            <>
+              <CreditCard size={20} />
+              {t.checkout} • {formatPrice(total, user)}
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
 }

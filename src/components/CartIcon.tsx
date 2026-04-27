@@ -10,9 +10,11 @@ export default function CartIcon() {
 
     return (
         <motion.div 
+            drag
+            dragElastic={0.1}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="fixed right-6 bottom-24 z-50"
+            className="fixed right-6 bottom-24 z-50 cursor-grab active:cursor-grabbing"
         >
             <Link to="/cart" className="w-14 h-14 primary-gradient rounded-2xl flex items-center justify-center text-background-dark shadow-2xl relative active:scale-90 transition-all">
                 <ShoppingCart size={24} />

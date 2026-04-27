@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "./lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { UserProfile } from "./types";
 
 // Pages
@@ -16,6 +16,7 @@ import AuthPage from "./pages/AuthPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import LabManagerDashboard from "./pages/LabManagerDashboard";
 import TrainerDashboard from "./pages/TrainerDashboard";
+import PaymentPage from "./pages/PaymentPage";
 import PlanPage from "./pages/PlanPage";
 import MenuItemPage from "./pages/MenuItemPage";
 import LabTestPage from "./pages/LabTestPage";
@@ -24,11 +25,11 @@ import OrdersPage from "./pages/OrdersPage";
 import PaymentMethodsPage from "./pages/PaymentMethodsPage";
 import SettingsPage from "./pages/SettingsPage";
 import InboxPage from "./pages/InboxPage";
-import PaymentPage from "./pages/PaymentPage";
 
 // Components
 import BottomNav from "./components/BottomNav";
-import ThemeToggle from "./components/ThemeToggle";
+import AIChatButton from "./components/AIChatButton";
+import LanguageToggle from "./components/LanguageToggle";
 import { CartProvider } from "./context/CartContext";
 import CartIcon from "./components/CartIcon";
 
@@ -36,6 +37,28 @@ export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(true);
+  const [lang, setLang] = useState<"ar" | "en">("ar");
+
+  useEffect(() => {
+    const savedLang = localStorage.getItem("lang") as "ar" | "en" | null;
+    if (savedLang) setLang(savedLang);
+  }, []);
+
+  const toggleLang = () => {
+    const newLang = lang === "ar" ? "en" : "ar";
+    setLang(newLang);
+    localStorage.setItem("lang", newLang);
+    if (user) {
+      setDoc(doc(db, "users", user.uid), { language: newLang }, { merge: true });
+    }
+  };
+
+  useEffect(() => {
+    if (user?.language) {
+      setLang(user.language);
+      localStorage.setItem("lang", user.language);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (isDark) {
@@ -46,22 +69,30 @@ export default function App() {
   }, [isDark]);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubProfile: (() => void) | undefined;
+
+    const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-        if (userDoc.exists()) {
-          setUser(userDoc.data() as UserProfile);
-        } else {
-          // New users will go through onboarding in AuthPage, 
-          // so we don't auto-create full profile here if missing logic
-          setUser(null); 
-        }
+        if (unsubProfile) unsubProfile();
+        unsubProfile = onSnapshot(doc(db, "users", firebaseUser.uid), (snap) => {
+          if (snap.exists()) {
+            setUser({ uid: firebaseUser.uid, ...snap.data() } as UserProfile);
+          } else {
+            setUser(null);
+          }
+          setLoading(false);
+        });
       } else {
+        if (unsubProfile) unsubProfile();
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
-    return unsub;
+    
+    return () => {
+      unsubAuth();
+      if (unsubProfile) unsubProfile();
+    };
   }, []);
 
   if (loading) {
@@ -75,43 +106,44 @@ export default function App() {
   return (
     <CartProvider>
       <Router>
-        <div className="min-h-screen font-sans selection:bg-primary/30 text-[var(--text-main)]" dir="rtl">
+        <div className="min-h-screen font-sans selection:bg-primary/30 text-[var(--text-main)]" dir={lang === "ar" ? "rtl" : "ltr"}>
           <div className="max-w-md md:max-w-lg lg:max-w-xl mx-auto relative min-h-screen flex flex-col shadow-2xl bg-[var(--bg-main)] transition-all border-x border-[var(--border-muted)]">
-            <ThemeToggle isDark={isDark} toggle={() => setIsDark(!isDark)} />
+            <LanguageToggle lang={lang} toggle={toggleLang} />
+            <AIChatButton user={user} />
             <CartIcon />
             <Routes>
-              <Route path="/" element={<HomePage user={user} />} />
-              <Route path="/menu" element={<MenuPage user={user} />} />
-              <Route path="/menu/:id" element={<MenuItemPage user={user} />} />
-              <Route path="/lab" element={<LabPage user={user} />} />
-              <Route path="/lab/:id" element={<LabTestPage user={user} />} />
-              <Route path="/cart" element={<CartPage user={user} />} />
-              <Route path="/inbox" element={user ? <InboxPage user={user} /> : <Navigate to="/auth" />} />
-              <Route path="/orders" element={user ? <OrdersPage user={user} /> : <Navigate to="/auth" />} />
-              <Route path="/payment-methods" element={user ? <PaymentMethodsPage user={user} /> : <Navigate to="/auth" />} />
-              <Route path="/payment" element={user ? <PaymentPage user={user} /> : <Navigate to="/auth" />} />
-              <Route path="/settings" element={user ? <SettingsPage user={user} /> : <Navigate to="/auth" />} />
-              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/" element={<HomePage user={user} lang={lang} />} />
+              <Route path="/menu" element={<MenuPage user={user} lang={lang} />} />
+              <Route path="/menu/:id" element={<MenuItemPage user={user} lang={lang} />} />
+              <Route path="/lab" element={<LabPage user={user} lang={lang} />} />
+              <Route path="/lab/:id" element={<LabTestPage user={user} lang={lang} />} />
+              <Route path="/cart" element={<CartPage user={user} lang={lang} />} />
+              <Route path="/inbox" element={user ? <InboxPage user={user} lang={lang} /> : <Navigate to="/auth" />} />
+              <Route path="/orders" element={user ? <OrdersPage user={user} lang={lang} /> : <Navigate to="/auth" />} />
+              <Route path="/payment" element={user ? <PaymentPage user={user} lang={lang} /> : <Navigate to="/auth" />} />
+              <Route path="/payment-methods" element={user ? <PaymentMethodsPage user={user} lang={lang} /> : <Navigate to="/auth" />} />
+              <Route path="/settings" element={user ? <SettingsPage user={user} lang={lang} /> : <Navigate to="/auth" />} />
+              <Route path="/auth" element={<AuthPage lang={lang} />} />
               
-              <Route path="/clinic" element={user ? <ClinicPage user={user} /> : <Navigate to="/auth" />} />
-              <Route path="/plan" element={user ? <PlanPage user={user} /> : <Navigate to="/auth" />} />
-              <Route path="/chat/:id" element={user ? <ChatPage user={user} /> : <Navigate to="/auth" />} />
-              <Route path="/profile" element={user ? <ProfilePage user={user} /> : <Navigate to="/auth" />} />
+              <Route path="/clinic" element={user ? <ClinicPage user={user} lang={lang} /> : <Navigate to="/auth" />} />
+              <Route path="/plan" element={user ? <PlanPage user={user} lang={lang} /> : <Navigate to="/auth" />} />
+              <Route path="/chat/:id" element={user ? <ChatPage user={user} lang={lang} /> : <Navigate to="/auth" />} />
+              <Route path="/profile" element={user ? <ProfilePage user={user} lang={lang} /> : <Navigate to="/auth" />} />
               
               {/* Role Specific Protected Routes */}
               {user?.role === "ADMIN" && (
-                <Route path="/admin" element={<AdminDashboard user={user} />} />
+                <Route path="/admin" element={<AdminDashboard user={user} lang={lang} />} />
               )}
               {user?.role === "LAB_MANAGER" && (
-                <Route path="/lab-manager" element={<LabManagerDashboard user={user} />} />
+                <Route path="/lab-manager" element={<LabManagerDashboard user={user} lang={lang} />} />
               )}
               {user?.role === "TRAINER" && (
-                <Route path="/trainer" element={<TrainerDashboard user={user} />} />
+                <Route path="/trainer" element={<TrainerDashboard user={user} lang={lang} />} />
               )}
               
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
-            <BottomNav role={user?.role || "USER"} />
+            <BottomNav role={user?.role || "USER"} lang={lang} />
           </div>
         </div>
       </Router>
